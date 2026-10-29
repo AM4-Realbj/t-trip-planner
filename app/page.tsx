@@ -9,16 +9,16 @@ import {
 } from "@/features/flight-outfit/components/flight-result";
 import { LookupForm } from "@/features/flight-outfit/components/lookup-form";
 
-function first(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
+function all(value: string | string[] | undefined) {
+  return value === undefined ? undefined : Array.isArray(value) ? value : [value];
 }
 
 export default async function Home({ searchParams }: PageProps<"/">) {
   const params = await searchParams;
-  const flight = first(params.flight);
-  const date = first(params.date);
-  const submitted = flight !== undefined || date !== undefined;
-  const input = { flight: flight ?? "", date: date ?? "" };
+  const flights = all(params.flight);
+  const date = Array.isArray(params.date) ? params.date[0] : params.date;
+  const submitted = flights !== undefined || date !== undefined;
+  const input = { flights: flights ?? [""], date: date ?? "" };
   const errors = submitted ? validateLookupInput(input, new Date()) : {};
   const valid = submitted && Object.keys(errors).length === 0;
 
@@ -29,12 +29,12 @@ export default async function Home({ searchParams }: PageProps<"/">) {
           공항 날씨와 옷차림
         </h1>
         <p className="text-muted-foreground">
-          출발 날짜와 편명을 넣으면 출발·도착 공항의 날씨와 입을 옷을 알려드려요.
+          출발 날짜와 편명을 넣으면 출발·환승·도착 공항의 날씨와 입을 옷을 알려드려요.
         </p>
       </div>
 
       <LookupForm
-        defaultFlight={flight}
+        defaultFlights={input.flights}
         defaultDate={date}
         collapsed={valid}
         errors={errors}
@@ -53,8 +53,11 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       ) : null}
 
       {valid ? (
-        <Suspense key={`${date}|${flight}`} fallback={<ResultSkeleton />}>
-          <FlightResult flight={input.flight} date={input.date} />
+        <Suspense
+          key={`${date}|${input.flights.join(",")}`}
+          fallback={<ResultSkeleton />}
+        >
+          <FlightResult flights={input.flights} date={input.date} />
         </Suspense>
       ) : null}
     </main>

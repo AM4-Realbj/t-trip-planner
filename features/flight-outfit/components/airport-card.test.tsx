@@ -13,6 +13,7 @@ const LAX: AirportStop = {
   latitude: 33.9425,
   longitude: -118.408,
   scheduledLocal: "2026-10-31T09:30",
+  scheduledUtc: "2026-10-31T16:30Z",
 };
 
 function renderCard(forecast: StopForecast) {
@@ -77,5 +78,48 @@ describe("공항 카드", () => {
       "href",
       "/?date=2026-10-31&flight=KE17",
     );
+  });
+});
+
+describe("환승 공항 카드", () => {
+  const BOARDING: AirportStop = {
+    ...LAX,
+    scheduledLocal: "2026-11-01T06:10",
+    scheduledUtc: "2026-11-01T13:10Z",
+  };
+
+  it("앞 편 도착 시각과 탑승 시각, 환승 대기 시간을 함께 보여 준다", () => {
+    render(
+      <AirportCard
+        role="환승"
+        stop={BOARDING}
+        arrivalLocal="2026-10-31T09:30"
+        layoverMinutes={1240}
+        forecast={{ status: "unavailable" }}
+        retryHref="/"
+      />,
+    );
+
+    expect(screen.getByText("도착")).toBeInTheDocument();
+    expect(screen.getByText("09:30")).toBeInTheDocument();
+    expect(screen.getByText("탑승")).toBeInTheDocument();
+    expect(screen.getByText("06:10")).toBeInTheDocument();
+    expect(screen.getByText("10월 31일 (토) → 11월 1일 (일)")).toBeInTheDocument();
+    expect(screen.getByText("환승 대기 20시간 40분")).toBeInTheDocument();
+  });
+
+  it("예보가 없을 때 환승 공항은 '탑승일'이 16일 안으로 들어오면 볼 수 있다고 알린다", () => {
+    render(
+      <AirportCard
+        role="환승"
+        stop={BOARDING}
+        arrivalLocal="2026-10-31T09:30"
+        layoverMinutes={60}
+        forecast={{ status: "unavailable" }}
+        retryHref="/"
+      />,
+    );
+
+    expect(screen.getByText(/탑승일이 16일 안으로/)).toBeInTheDocument();
   });
 });

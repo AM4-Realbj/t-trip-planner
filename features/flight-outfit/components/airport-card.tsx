@@ -4,18 +4,49 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
-import type { AirportStop, Outfit, StopForecast } from "../types";
+import type { AirportStop, Outfit, StopForecast, StopRole } from "../types";
 import { dateOf, timeOf, zoneOf } from "./format";
 import { BaseIcon, CarryIcon, OuterIcon, WeatherIcon } from "./outfit-icons";
 
 type Props = {
-  role: "출발" | "도착";
+  role: StopRole;
   stop: AirportStop;
   forecast: StopForecast;
   retryHref: string;
+  /** 환승 공항: 앞 편이 도착하는 현지 시각 */
+  arrivalLocal?: string;
+  layoverMinutes?: number;
 };
 
-export function AirportCard({ role, stop, forecast, retryHref }: Props) {
+const DAY_WORD: Record<StopRole, string> = {
+  출발: "출발일",
+  환승: "탑승일",
+  도착: "도착일",
+};
+
+function layoverText(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return [hours ? `${hours}시간` : "", rest || !hours ? `${rest}분` : ""]
+    .filter(Boolean)
+    .join(" ");
+}
+
+export function AirportCard({
+  role,
+  stop,
+  forecast,
+  retryHref,
+  arrivalLocal,
+  layoverMinutes,
+}: Props) {
+  const times = arrivalLocal
+    ? [
+        { label: "도착", local: arrivalLocal },
+        { label: "탑승", local: stop.scheduledLocal },
+      ]
+    : [{ label: undefined, local: stop.scheduledLocal }];
+  const dates = [...new Set(times.map((t) => dateOf(t.local)))].join(" → ");
   return (
     <Card data-airport-role={role}>
       <CardContent className="flex flex-col gap-4">
@@ -31,19 +62,31 @@ export function AirportCard({ role, stop, forecast, retryHref }: Props) {
             </span>
           </div>
           <div className="flex flex-col items-end text-sm">
-            <span className="text-lg font-semibold">
-              {timeOf(stop.scheduledLocal)}
-            </span>
-            <span className="text-muted-foreground">
-              {dateOf(stop.scheduledLocal)}
-            </span>
+            {times.map((t) => (
+              <span key={t.local} className="flex items-baseline gap-2">
+                {t.label ? (
+                  <span className="text-xs text-muted-foreground">{t.label}</span>
+                ) : null}
+                <span className="text-lg font-semibold">{timeOf(t.local)}</span>
+              </span>
+            ))}
+            <span className="text-muted-foreground">{dates}</span>
             <span className="text-xs text-muted-foreground">
               현지 {zoneOf(stop.scheduledLocal, stop.timeZone)}
             </span>
           </div>
         </div>
+        {layoverMinutes !== undefined ? (
+          <div>
+            <Badge variant="outline">환승 대기 {layoverText(layoverMinutes)}</Badge>
+          </div>
+        ) : null}
         <Separator />
-        <ForecastBody forecast={forecast} role={role} retryHref={retryHref} />
+        <ForecastBody
+          forecast={forecast}
+          day={DAY_WORD[role]}
+          retryHref={retryHref}
+        />
       </CardContent>
     </Card>
   );
@@ -51,11 +94,11 @@ export function AirportCard({ role, stop, forecast, retryHref }: Props) {
 
 function ForecastBody({
   forecast,
-  role,
+  day,
   retryHref,
 }: {
   forecast: StopForecast;
-  role: string;
+  day: string;
   retryHref: string;
 }) {
   if (forecast.status === "unavailable") {
@@ -63,7 +106,7 @@ function ForecastBody({
       <div className="flex flex-col gap-1">
         <strong className="font-semibold">아직 예보가 없습니다</strong>
         <p className="text-sm text-muted-foreground">
-          {role}일이 16일 안으로 들어오면 날씨와 옷 추천을 볼 수 있어요. 그때
+          {day}이 16일 안으로 들어오면 날씨와 옷 추천을 볼 수 있어요. 그때
           다시 조회해 주세요.
         </p>
       </div>

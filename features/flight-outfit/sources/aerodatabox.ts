@@ -15,7 +15,7 @@ type RawAirportSide = {
     location: { lat: number; lon: number };
     timeZone: string;
   };
-  scheduledTime: { local: string };
+  scheduledTime: { local: string; utc: string };
   terminal?: string;
 };
 
@@ -36,6 +36,8 @@ function toStop(side: RawAirportSide): AirportStop {
     longitude: side.airport.location.lon,
     // "2026-10-31 14:30+09:00" → 공항 현지 "2026-10-31T14:30"
     scheduledLocal: side.scheduledTime.local.slice(0, 16).replace(" ", "T"),
+    // "2026-10-31 05:30Z" → "2026-10-31T05:30Z"
+    scheduledUtc: side.scheduledTime.utc.replace(" ", "T"),
   };
 }
 

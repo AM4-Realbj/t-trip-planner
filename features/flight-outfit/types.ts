@@ -36,6 +36,8 @@ export type AirportStop = {
   longitude: number;
   /** 공항 현지 예정 시각, `YYYY-MM-DDTHH:mm` */
   scheduledLocal: string;
+  /** 같은 시각의 UTC, `YYYY-MM-DDTHH:mmZ` */
+  scheduledUtc: string;
 };
 
 export type FlightLeg = {
@@ -49,6 +51,18 @@ export type StopForecast =
   | { status: "ok"; weather: Weather; outfit: Outfit }
   | { status: "unavailable" }
   | { status: "failed" };
+
+export type StopRole = "출발" | "환승" | "도착";
+
+/** 일정의 한 공항. 날씨는 `stop.scheduledLocal`(출발·탑승·도착 시각) 기준이다. */
+export type ItineraryStop = {
+  role: StopRole;
+  stop: AirportStop;
+  /** 환승 공항에서 앞 편이 도착하는 현지 시각 */
+  arrivalLocal?: string;
+  layoverMinutes?: number;
+  forecast: StopForecast;
+};
 
 export type ComparisonEmphasis = "strong" | "normal";
 
@@ -68,20 +82,28 @@ export type AirportComparison = {
   };
 };
 
-export type LookupInput = { flight: string; date: string };
+export type PairComparison = {
+  from: string;
+  to: string;
+  comparison: AirportComparison;
+};
+
+export type LookupInput = { flights: string[]; date: string };
 
 export type LookupErrors = { flight?: string; date?: string };
 
 export type LookupResult =
   | { status: "invalid"; errors: LookupErrors }
-  | { status: "not-found" }
+  /** legIndex는 0부터 센 편 순서 */
+  | { status: "not-found"; legIndex: number }
+  | { status: "no-connection"; legIndex: number }
+  | { status: "airport-mismatch"; legIndex: number; from: string; to: string }
   | { status: "flight-error" }
   | {
       status: "ok";
-      flight: FlightLeg;
-      departure: StopForecast;
-      arrival: StopForecast;
-      comparison?: AirportComparison;
+      legs: FlightLeg[];
+      stops: ItineraryStop[];
+      comparisons: PairComparison[];
       tip?: string;
     };
 

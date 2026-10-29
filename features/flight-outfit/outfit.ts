@@ -1,4 +1,4 @@
-import type { CarryItem, Outfit, Weather } from "./types";
+import type { CarryItem, ItineraryStop, Outfit, Weather } from "./types";
 
 type Tier = {
   minApparentC: number;
@@ -70,13 +70,21 @@ export function recommendOutfit(weather: Weather): Outfit {
   };
 }
 
-/** 두 공항의 겉옷을 견주어 기내에서 갈아입는 방법을 한 단락으로 안내한다. */
-export function changeTip(
-  departure: { iata: string; weather: Weather; outfit: Outfit },
-  arrival: { iata: string; weather: Weather; outfit: Outfit },
-) {
-  if (departure.outfit.outer === arrival.outfit.outer) {
-    return `두 공항 모두 ${departure.outfit.outer} 차림이 알맞아요. 겉옷을 벗고 입는 것으로 기내 온도에 맞춰 조절하세요.`;
+/** 일정의 모든 공항 겉옷을 이어서 기내에서 갈아입는 방법을 한 단락으로 안내한다. 날씨가 모두 있을 때만 쓴다. */
+export function changeTip(stops: ItineraryStop[]) {
+  const ready = stops.flatMap((s) =>
+    s.forecast.status === "ok"
+      ? [{ role: s.role, iata: s.stop.iata, weather: s.forecast.weather, outfit: s.forecast.outfit }]
+      : [],
+  );
+  const scope = ready.length === 2 ? "두 공항" : "모든 공항";
+  if (ready.every((s) => s.outfit.outer === ready[0].outfit.outer)) {
+    return `${scope === "두 공항" ? "두 공항 모두" : "모든 공항에서"} ${ready[0].outfit.outer} 차림이 알맞아요. 겉옷을 벗고 입는 것으로 기내 온도에 맞춰 조절하세요.`;
   }
-  return `출발 공항(${departure.iata})은 체감 ${departure.weather.apparentC}°라 ${departure.outfit.outer} 차림으로 나서고, 도착 공항(${arrival.iata})은 체감 ${arrival.weather.apparentC}°라 ${arrival.outfit.outer} 차림이 좋아요. 겉옷만 벗고 입는 것으로 기내 온도와 두 공항 날씨에 맞춰 조절하세요.`;
+  const parts = ready.map((s, i) => {
+    const lead = `${s.role} 공항(${s.iata})은 체감 ${s.weather.apparentC}°라 ${s.outfit.outer}`;
+    if (i === ready.length - 1) return `${lead} 차림이 좋아요`;
+    return i === 0 ? `${lead} 차림으로 나서고` : `${lead} 차림으로 갈아입고`;
+  });
+  return `${parts.join(", ")}. 겉옷만 벗고 입는 것으로 기내 온도와 ${scope} 날씨에 맞춰 조절하세요.`;
 }

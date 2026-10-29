@@ -66,11 +66,13 @@ describe("AeroDataBox 편명 조회", () => {
         latitude: 37.4691,
         longitude: 126.451,
         scheduledLocal: "2026-10-31T14:30",
+        scheduledUtc: "2026-10-31T05:30Z",
       },
       arrival: {
         iata: "LAX",
         timeZone: "America/Los_Angeles",
         scheduledLocal: "2026-10-31T09:30",
+        scheduledUtc: "2026-10-31T16:30Z",
       },
     });
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
