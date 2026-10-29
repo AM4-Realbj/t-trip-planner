@@ -154,15 +154,15 @@ describe("입력 검증", () => {
     expect(deps.fetchFlight).not.toHaveBeenCalled();
   });
 
-  it("편명은 4편까지만 받는다", async () => {
+  it("편명은 3편까지만 받는다", async () => {
     const result = await lookupFlightOutfit(
-      { flights: ["KE1", "KE2", "KE3", "KE4", "KE5"], date: "2026-10-31" },
+      { flights: ["KE1", "KE2", "KE3", "KE4"], date: "2026-10-31" },
       fakeDeps(),
     );
 
     expect(result).toEqual({
       status: "invalid",
-      errors: { flight: "편명은 4편까지 입력할 수 있어요." },
+      errors: { flight: "편명은 3편까지 입력할 수 있어요." },
     });
   });
 

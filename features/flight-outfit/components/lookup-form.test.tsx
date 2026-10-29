@@ -102,8 +102,8 @@ describe("환승편 칸", () => {
     expect(screen.queryByRole("button", { name: /삭제/ })).not.toBeInTheDocument();
   });
 
-  it("편명은 4칸까지만 늘릴 수 있다", () => {
-    render(<LookupForm defaultFlights={["KE1", "KE2", "KE3", "KE4"]} />);
+  it("편명은 3칸까지만 늘릴 수 있다", () => {
+    render(<LookupForm defaultFlights={["KE1", "KE2", "KE3"]} />);
 
     expect(screen.queryByRole("button", { name: "환승편 추가" })).not.toBeInTheDocument();
   });

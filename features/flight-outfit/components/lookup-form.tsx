@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import type { LookupErrors } from "../types";
 import { dateOf } from "./format";
 
-const MAX_FLIGHTS = 4;
+const MAX_FLIGHTS = 3;
 
 type Props = {
   defaultFlights?: string[];

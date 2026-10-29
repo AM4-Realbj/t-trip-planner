@@ -17,7 +17,7 @@ const FLIGHT_FORMAT = /^[A-Z0-9]{2}\d{1,4}$/;
 const DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
-const MAX_LEGS = 4;
+const MAX_LEGS = 3;
 /** 환승편은 앞 편이 도착한 날부터 이 일수 뒤까지 찾는다. */
 const CONNECTION_SEARCH_DAYS = 3;
 
