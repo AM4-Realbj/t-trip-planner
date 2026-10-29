@@ -230,6 +230,27 @@ describe("공항별 날씨와 추천 옷", () => {
   });
 
   it.each([
+    [60, "rain", "비 올 가능성"],
+    [59, "cloudy", "구름 많음"],
+  ])("흐린 날씨 코드라도 강수 확률이 %i%%이면 %s로 표시한다", async (probability, kind, label) => {
+    const deps = fakeDeps({
+      fetchHourlyForecast: vi.fn(async () => [
+        { ...ICN_HOURS[0], weatherCode: 3, precipitationProbability: probability },
+        { ...LAX_HOURS[0], weatherCode: 3, precipitationProbability: probability },
+      ]),
+    });
+
+    const result = await lookupFlightOutfit(
+      { flight: "KE17", date: "2026-10-31" },
+      deps,
+    );
+
+    expect(result).toMatchObject({
+      departure: { weather: { kind, label, precipitationProbability: probability } },
+    });
+  });
+
+  it.each([
     [30, "기내용 얇은 가디건만 챙기세요", "반팔 티셔츠, 얇은 바지"],
     [22, "가벼운 가디건 (벗어도 돼요)", "얇은 긴팔 티셔츠, 긴 바지"],
     [12, "얇은 재킷이나 가디건", "긴팔 티셔츠, 긴 바지"],

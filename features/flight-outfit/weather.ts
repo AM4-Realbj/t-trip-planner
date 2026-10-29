@@ -20,11 +20,19 @@ function kindOf(code: number): WeatherKind {
   return "cloudy";
 }
 
+/** 코드는 비가 아니어도 이 확률 이상이면 비 올 가능성이 높은 날씨로 표시한다. */
+const RAIN_LIKELY_PROBABILITY = 60;
+const DRY_KINDS: WeatherKind[] = ["clear", "cloudy", "fog"];
+
 export function toWeather(point: HourlyPoint): Weather {
-  const kind = kindOf(point.weatherCode);
+  const codeKind = kindOf(point.weatherCode);
+  const rainLikely =
+    DRY_KINDS.includes(codeKind) &&
+    point.precipitationProbability >= RAIN_LIKELY_PROBABILITY;
+  const kind = rainLikely ? "rain" : codeKind;
   return {
     kind,
-    label: LABELS[kind],
+    label: rainLikely ? "비 올 가능성" : LABELS[kind],
     temperatureC: Math.round(point.temperatureC),
     apparentC: Math.round(point.apparentC),
     precipitationProbability: Math.round(point.precipitationProbability),
