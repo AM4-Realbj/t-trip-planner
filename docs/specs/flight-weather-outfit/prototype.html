@@ -1,0 +1,556 @@
+<!--
+  prototype shell: the review chrome every prototype starts from.
+
+  Keep this comment in the prototype you grow from here: it is the contract,
+  and later turns work from that file rather than from this one.
+
+  Contract (extend product screens; keep the review shell):
+  - Product:  .sh-stage contains only end-user product UI. Keep review notes,
+               rationale, instructions, and approval controls in conversation.
+  - Screens:  <section data-screen="slug" data-title="Label"> inside .sh-stage.
+               The selector, arrow keys, and #hash routing build themselves.
+               Use one option per product destination or distinct surface,
+               named by its product role. Keep baselines, variants, comparison
+               labels, steps, indexes, and progress out of names and states.
+               Links may use href="#slug".
+  - States:   "Default" is automatic. A screen declares only representative
+               presets in data-states="Empty,Error". Use natural, screen-specific
+               names. Reserve presets for important multi-step results, forced
+               data or errors, or materially different structure; keep one-click
+               and transient states as interactions. Use data-when="Empty" on
+               preset-only elements. Call prototypeShell.setState("Name") on
+               entry and setState("Default") on exit, including when repeated
+               actions cross a preset condition.
+  - Viewport: "vp (m)" cycles full / 390 / 768. The 390 preset is a
+               fixed-height, internally scrolling phone frame. Start a
+               mobile-first prototype by adding class="sh-vp-390" to <body>
+               (or a bootstrap classList.add before the chrome script runs).
+  - Pinning:  keep in-frame bars (tab bars, CTAs) inside the phone with
+               position: sticky; position: fixed pins to the browser window.
+  - Tokens:   replace the project-tokens block with project tokens copied
+               verbatim. Map differing names to --background, --foreground, and
+               --font afterwards; replace network fonts with a system stack and
+               note that substitution. Without a design system, keep this
+               palette as the finished style. When the project ships dark
+               tokens, copy them under .sh-theme-dark, which the shell sets
+               on both the root element and body, so :root.sh-theme-dark and
+               body.sh-theme-dark work too. A .dark class or a
+               prefers-color-scheme media query copied verbatim would follow
+               the reviewer's system instead of the toggle.
+  - Theme:    the light / dark switch (t) changes the product surface only.
+               It appears only when a .sh-theme-dark rule declares dark tokens,
+               so a prototype without them carries no theme control. Prototypes
+               always load light; the review bar keeps its own dark styling in
+               both themes so it still reads as chrome.
+  - Placeholders: .wf-pic stands in for pictures the prototype has no real
+               files for. Use real text everywhere text belongs.
+
+  - Chrome:   Keep exactly the screen selector, selected-screen state selector,
+               viewport cycle, and theme toggle.
+
+  Self-contained by design: no build, no framework, no network.
+-->
+<meta charset="utf-8">
+<title>Prototype</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* ── project tokens (app/globals.css, copied verbatim; font = system stack substitution) ── */
+  :root {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.708 0 0);
+    --radius: 0.625rem;
+    --font: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+  }
+  .sh-theme-dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+  }
+
+  /* ── review chrome (sh-*): keep; extend product styles elsewhere ── */
+  * { box-sizing: border-box }
+  body {
+    margin: 0; padding: 0 0 40px;
+    background: var(--background, #f6f6f6); color: var(--foreground, #3a3a3a);
+    font-family: var(--font, system-ui, sans-serif);
+  }
+  .sh-bar {
+    position: sticky; top: 0; z-index: 999;
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    padding: 8px 12px; background: #191a1c; color: #d7d7d7;
+    font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .sh-bar b, .sh-control-label { color: #8a8f98; font-weight: 500 }
+  .sh-control { display: inline-flex; gap: 5px; align-items: center }
+  .sh-bar button {
+    border: 1px solid #3a3d42; background: none; color: inherit;
+    font: inherit; padding: 2px 9px; border-radius: 99px; cursor: pointer;
+  }
+  .sh-bar select {
+    width: 170px; border: 1px solid #3a3d42; background: #232428; color: inherit;
+    font: inherit; padding: 3px 28px 3px 9px; border-radius: 7px; cursor: pointer;
+    color-scheme: dark;
+  }
+  #sh-screen { width: 190px }
+  .sh-bar button.on { background: #d7d7d7; color: #191a1c; border-color: #d7d7d7 }
+  .sh-theme { display: inline-flex; border: 1px solid #3a3d42; border-radius: 99px; overflow: hidden }
+  .sh-theme button { border: 0; border-radius: 0; padding: 2px 10px }
+  .sh-spacer { flex: 1 }
+  .sh-stage { max-width: 960px; margin: 0 auto; padding: 12px 16px 0 }
+  [hidden] { display: none !important }
+
+  /* viewport presets */
+  .sh-vp-390 .sh-stage {
+    max-width: 390px; background: var(--background, #f6f6f6);
+    border: 10px solid #191a1c; border-radius: 28px;
+    padding: 16px 12px; height: min(844px, calc(100dvh - 52px));
+    overflow-y: auto; margin-top: 12px;
+  }
+  .sh-vp-768 .sh-stage {
+    max-width: 768px; border: 1px solid #c4c4c4; border-radius: 12px;
+    padding: 16px; margin-top: 12px;
+  }
+
+  /* placeholders */
+  .wf-pic  { border-radius: 4px; background:
+             repeating-linear-gradient(45deg, #e9e9e9, #e9e9e9 6px, #f2f2f2 6px, #f2f2f2 12px) }
+  .sh-theme-dark .wf-pic { background: repeating-linear-gradient(45deg,
+             color-mix(in srgb, var(--foreground) 16%, transparent) 0 6px,
+             color-mix(in srgb, var(--foreground) 8%, transparent) 6px 12px) }
+
+  /* ── product styles (shadcn-style composition on project tokens) ── */
+  .app { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 44rem; margin: 0 auto; padding-block: 8px 24px; font-size: 14px; line-height: 1.5 }
+  .app h1 { margin: 0; font-size: 1.5rem; font-weight: 600; letter-spacing: -0.01em }
+  .app h2, .app h3, .app p { margin: 0 }
+  .lead { color: var(--muted-foreground) }
+  .card { background: var(--card); color: var(--card-foreground); border: 1px solid var(--border); border-radius: calc(var(--radius) * 1.4); padding: 16px; display: flex; flex-direction: column; gap: 14px }
+  .form-row { display: grid; grid-template-columns: 1fr; gap: 12px }
+  [data-screen] { container-type: inline-size }
+  @container (min-width: 540px) { .form-row { grid-template-columns: 1fr 1fr } }
+  .field { display: flex; flex-direction: column; gap: 6px }
+  .field label { font-weight: 500; font-size: 13px }
+  .input { height: 40px; width: 100%; border: 1px solid var(--input); background: transparent; color: var(--foreground); border-radius: calc(var(--radius) * 0.8); padding: 0 12px; font: inherit; color-scheme: light }
+  .sh-theme-dark .input { color-scheme: dark }
+  .input:focus-visible { outline: 3px solid color-mix(in srgb, var(--ring) 50%, transparent); border-color: var(--ring) }
+  .input[aria-invalid="true"] { border-color: var(--destructive) }
+  .hint { color: var(--muted-foreground); font-size: 12px }
+  .field-error { color: var(--destructive); font-size: 12px }
+  .btn { height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: calc(var(--radius) * 0.8); border: 1px solid transparent; padding: 0 16px; font: inherit; font-weight: 500; cursor: pointer }
+  .btn-primary { background: var(--primary); color: var(--primary-foreground) }
+  .btn-outline { background: transparent; color: var(--foreground); border-color: var(--border) }
+  .btn-sm { height: 32px; padding: 0 12px; font-size: 13px }
+  .btn-full { width: 100% }
+  .badge { display: inline-flex; align-items: center; border-radius: 99px; background: var(--secondary); color: var(--secondary-foreground); padding: 2px 10px; font-size: 12px; font-weight: 500 }
+  .badge-outline { background: transparent; border: 1px solid var(--border); color: var(--muted-foreground) }
+  .alert { border: 1px solid var(--border); border-radius: calc(var(--radius) * 1.2); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; background: var(--card) }
+  .alert strong { font-weight: 600 }
+  .alert-destructive { border-color: color-mix(in srgb, var(--destructive) 50%, transparent) }
+  .alert-destructive strong { color: var(--destructive) }
+  .alert .actions { display: flex; gap: 8px; margin-top: 4px }
+  .flight-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap }
+  .flight-head .title { font-weight: 600; font-size: 1rem }
+  .route { display: grid; grid-template-columns: 1fr; gap: 12px }
+  @container (min-width: 620px) { .route { grid-template-columns: 1fr 1fr } }
+  .airport { display: flex; flex-direction: column; gap: 14px }
+  .airport-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px }
+  .airport-role { font-size: 12px; color: var(--muted-foreground) }
+  .airport-code { font-size: 1.75rem; font-weight: 600; letter-spacing: 0.02em; line-height: 1.1 }
+  .airport-name { color: var(--muted-foreground); font-size: 13px }
+  .when { text-align: right; font-size: 13px }
+  .when b { display: block; font-size: 1.125rem; font-weight: 600 }
+  .when span { color: var(--muted-foreground) }
+  .sep { border: 0; border-top: 1px solid var(--border); margin: 0; width: 100% }
+  .wx { display: flex; align-items: center; gap: 12px }
+  .wx-temp { font-size: 2.25rem; font-weight: 600; line-height: 1 }
+  .wx-detail { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--muted-foreground) }
+  .wx-detail b { color: var(--foreground); font-weight: 500 }
+  .ico { width: 44px; height: 44px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round }
+  .ico-sm { width: 22px; height: 22px }
+  .diff { display: flex; flex-direction: column; gap: 4px }
+  .diff-row { display: grid; grid-template-columns: 4.5rem 1fr auto; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border) }
+  .diff-row:first-of-type { border-top: 0 }
+  .diff-label { font-size: 12px; font-weight: 600; color: var(--muted-foreground) }
+  .diff-pair { display: flex; align-items: center; gap: 8px; font-weight: 500; flex-wrap: wrap }
+  .diff-pair .arrow { color: var(--muted-foreground) }
+  .diff-pair .side { display: inline-flex; align-items: center; gap: 6px }
+  .diff-pair .code { font-size: 11px; color: var(--muted-foreground); font-weight: 600 }
+  .delta { font-weight: 600; font-size: 13px; border-radius: 99px; padding: 2px 10px; background: var(--secondary); white-space: nowrap }
+  .delta-strong { background: var(--primary); color: var(--primary-foreground) }
+  .bar { position: relative; height: 6px; border-radius: 99px; background: var(--secondary); overflow: hidden; margin-top: 6px }
+  .bar > i { position: absolute; inset: 0 auto 0 0; background: var(--primary); border-radius: 99px }
+  .bar.dep > i { background: var(--ring) }
+  .section-label { font-size: 12px; font-weight: 600; color: var(--muted-foreground); letter-spacing: 0.02em }
+  .layers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px }
+  .layers li { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: calc(var(--radius) * 0.8); padding: 8px 10px }
+  .layers .tag { flex: none; width: 52px; font-size: 11px; font-weight: 600; color: var(--muted-foreground) }
+  .carry { display: flex; gap: 6px; flex-wrap: wrap }
+  .tip { border-style: dashed }
+  .tip p { font-size: 13px }
+  .skeleton { background: var(--accent); border-radius: calc(var(--radius) * 0.8); animation: pulse 1.6s ease-in-out infinite }
+  @keyframes pulse { 50% { opacity: .5 } }
+  .attrib { text-align: center; font-size: 12px; color: var(--muted-foreground) }
+  .empty { text-align: center; padding: 32px 16px; display: flex; flex-direction: column; gap: 6px; align-items: center }
+  .empty .glyph { font-size: 2rem }
+  .notice { display: flex; flex-direction: column; gap: 6px; align-items: flex-start }
+  .notice strong { font-weight: 600 }
+  .notice p { color: var(--muted-foreground); font-size: 13px }
+</style>
+
+<header class="sh-bar">
+  <b>proto</b>
+  <label class="sh-control"><span class="sh-control-label">screen</span><select id="sh-screen"></select></label>
+  <span class="sh-spacer"></span>
+  <label class="sh-control"><span class="sh-control-label">state</span><select id="sh-state"></select></label>
+  <button id="sh-vp">vp: full (m)</button>
+  <div class="sh-theme" id="sh-theme" role="group" aria-label="theme (t)" hidden>
+    <button data-theme="light">light</button><button data-theme="dark">dark</button>
+  </div>
+</header>
+
+<main class="sh-stage">
+  <section data-screen="lookup" data-title="편명 조회" data-states="처음,조회 중,편명 없음,조회 실패,예보 없음,한쪽 날씨 실패,입력 오류">
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+      <symbol id="i-rain" viewBox="0 0 24 24"><path d="M7 16a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 8.5 4 4 0 0 1 17 16"/><path d="M8 19l-1 2M12 19l-1 2M16 19l-1 2"/></symbol>
+    </svg>
+    <div class="app">
+      <div>
+        <h1>공항 날씨와 옷차림</h1>
+        <p class="lead">편명과 출발 날짜를 넣으면 출발·도착 공항의 날씨와 입을 옷을 알려드려요.</p>
+      </div>
+
+      <form id="lookup-form" class="card" data-component="Card" novalidate>
+        <div class="form-row">
+          <div class="field" data-component="Field">
+            <label for="date">출발 날짜 (출발 공항 현지)</label>
+            <input id="date" type="date" class="input" data-component="Input" value="2026-10-31">
+            <span id="date-err" class="field-error" hidden>날짜를 확인해 주세요.</span>
+          </div>
+          <div class="field" data-component="Field">
+            <label for="flight">편명</label>
+            <input id="flight" class="input" data-component="Input" value="KE17" placeholder="예: KE17" autocomplete="off" aria-describedby="flight-err">
+            <span id="flight-err" class="field-error" data-when="입력 오류" hidden>편명 형식이 맞지 않아요. 항공사 코드 2자와 숫자로 입력해 주세요.</span>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" data-component="Button">날씨와 옷 보기</button>
+      </form>
+
+      <!-- 처음 -->
+      <div class="card empty" data-when="처음" data-component="Empty">
+        <div class="glyph" aria-hidden="true">🧳</div>
+        <strong>아직 조회한 편명이 없어요</strong>
+        <p class="lead">편명과 날짜를 입력하면 공항별 예보와 추천 옷이 이곳에 나타나요.</p>
+      </div>
+
+      <!-- 조회 중 -->
+      <div class="route" data-when="조회 중" aria-busy="true">
+        <div class="card" data-component="Skeleton">
+          <div class="skeleton" style="height:20px;width:40%"></div>
+          <div class="skeleton" style="height:32px;width:55%"></div>
+          <div class="skeleton" style="height:56px"></div>
+          <div class="skeleton" style="height:96px"></div>
+        </div>
+        <div class="card" data-component="Skeleton">
+          <div class="skeleton" style="height:20px;width:40%"></div>
+          <div class="skeleton" style="height:32px;width:55%"></div>
+          <div class="skeleton" style="height:56px"></div>
+          <div class="skeleton" style="height:96px"></div>
+        </div>
+      </div>
+
+      <!-- 편명 없음 -->
+      <div class="alert" role="alert" data-when="편명 없음" data-component="Alert">
+        <strong>해당 날짜에 운항하는 편명을 찾지 못했어요</strong>
+        <span class="lead">편명과 날짜를 다시 확인해 주세요. 출발 날짜는 출발 공항 현지 날짜예요.</span>
+      </div>
+
+      <!-- 조회 실패 -->
+      <div class="alert alert-destructive" role="alert" data-when="조회 실패" data-component="Alert">
+        <strong>편명 정보를 가져오지 못했어요</strong>
+        <span class="lead">잠시 연결이 원활하지 않아요. 다시 시도해 주세요.</span>
+        <div class="actions"><button type="button" class="btn btn-outline btn-sm" data-component="Button" id="retry">다시 시도</button></div>
+      </div>
+
+      <!-- 결과 -->
+      <div id="results" style="display:flex;flex-direction:column;gap:16px" data-when="Default,예보 없음,한쪽 날씨 실패">
+        <div class="flight-head">
+          <span class="title">KE 17 · 대한항공</span>
+          <span class="badge badge-outline" data-component="Badge">Boeing 777-300ER</span>
+        </div>
+
+        <div class="route">
+          <!-- 출발 -->
+          <article class="card airport" data-component="Card">
+            <div class="airport-top">
+              <div>
+                <div class="airport-role">출발</div>
+                <div class="airport-code">ICN</div>
+                <div class="airport-name">서울 인천국제공항 · T2</div>
+              </div>
+              <div class="when"><b>14:30</b><span>10월 31일 (토)</span><br><span>현지 KST</span></div>
+            </div>
+            <hr class="sep">
+            <div data-when="Default,한쪽 날씨 실패" style="display:flex;flex-direction:column;gap:14px">
+              <div class="wx">
+                <svg class="ico" role="img" aria-label="맑음"><use href="#i-sun"/></svg>
+                <div class="wx-temp">14°</div>
+                <div class="wx-detail"><b>맑음</b><span>체감 12° · 강수 확률 10%</span></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div class="section-label">추천 옷</div>
+                <ul class="layers">
+                  <li><span class="tag">겉옷</span><span>얇은 재킷이나 가디건</span></li>
+                  <li><span class="tag">기본</span><span>긴팔 티셔츠, 편한 바지</span></li>
+                </ul>
+                <div class="carry"><span class="badge" data-component="Badge">지참 물품 없음</span></div>
+              </div>
+            </div>
+            <div class="notice" data-when="예보 없음">
+              <strong>아직 예보가 없어요</strong>
+              <p>출발일이 16일 안으로 들어오면 날씨와 옷 추천을 볼 수 있어요. 그때 다시 조회해 주세요.</p>
+            </div>
+          </article>
+
+          <!-- 도착 -->
+          <article class="card airport" data-component="Card">
+            <div class="airport-top">
+              <div>
+                <div class="airport-role">도착</div>
+                <div class="airport-code">LAX</div>
+                <div class="airport-name">로스앤젤레스 국제공항 · TB</div>
+              </div>
+              <div class="when"><b>09:30</b><span>10월 31일 (토)</span><br><span>현지 PDT</span></div>
+            </div>
+            <hr class="sep">
+            <div data-when="Default" style="display:flex;flex-direction:column;gap:14px">
+              <div class="wx">
+                <svg class="ico" role="img" aria-label="비"><use href="#i-rain"/></svg>
+                <div class="wx-temp">18°</div>
+                <div class="wx-detail"><b>비</b><span>체감 17° · 강수 확률 60%</span></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div class="section-label">추천 옷</div>
+                <ul class="layers">
+                  <li><span class="tag">겉옷</span><span>방수되는 얇은 재킷</span></li>
+                  <li><span class="tag">기본</span><span>긴팔 티셔츠, 긴 바지</span></li>
+                </ul>
+                <div class="carry"><span class="badge" data-component="Badge">☂️ 우산</span></div>
+              </div>
+            </div>
+            <div class="alert alert-destructive" data-when="한쪽 날씨 실패" data-component="Alert">
+              <strong>이 공항 날씨를 가져오지 못했어요</strong>
+              <span class="lead">출발 공항 정보는 그대로 볼 수 있어요.</span>
+              <div class="actions"><button type="button" class="btn btn-outline btn-sm" data-component="Button" id="retry-wx">다시 시도</button></div>
+            </div>
+            <div class="notice" data-when="예보 없음">
+              <strong>아직 예보가 없어요</strong>
+              <p>도착일이 16일 안으로 들어오면 날씨와 옷 추천을 볼 수 있어요. 그때 다시 조회해 주세요.</p>
+            </div>
+          </article>
+        </div>
+
+        <section class="card diff" data-when="Default" data-component="Card" aria-label="공항 간 날씨 차이">
+          <div class="section-label">ICN → LAX 날씨 차이</div>
+          <div class="diff-row">
+            <span class="diff-label">날씨</span>
+            <span class="diff-pair">
+              <span class="side"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-sun"/></svg>맑음</span>
+              <span class="arrow" aria-hidden="true">→</span>
+              <span class="side"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-rain"/></svg>비</span>
+            </span>
+            <span class="delta delta-strong">비로 바뀜</span>
+          </div>
+          <div class="diff-row">
+            <span class="diff-label">기온</span>
+            <span class="diff-pair"><span class="side">14°</span><span class="arrow" aria-hidden="true">→</span><span class="side">18°</span></span>
+            <span class="delta">+4° 더 따뜻함</span>
+          </div>
+          <div class="diff-row">
+            <span class="diff-label">강수 확률</span>
+            <span style="display:flex;flex-direction:column">
+              <span class="diff-pair"><span class="side">10%</span><span class="arrow" aria-hidden="true">→</span><span class="side">60%</span></span>
+              <span class="bar dep" aria-hidden="true"><i style="width:10%"></i></span>
+              <span class="bar" aria-hidden="true"><i style="width:60%"></i></span>
+            </span>
+            <span class="delta delta-strong">+50%p</span>
+          </div>
+        </section>
+
+        <div class="card tip" data-when="Default" data-component="Card">
+          <div class="section-label">갈아입기</div>
+          <p>인천에서는 재킷을 걸치고 출발하세요. 기내에서는 재킷을 벗어 두었다가, 착륙 전에 다시 입으면 LA 비를 맞아도 괜찮아요.</p>
+        </div>
+
+        <div class="attrib">항공편 정보 제공: AeroDataBox · 날씨: Open-Meteo</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+  const stage = document.querySelector('.sh-stage');
+  const screens = [...stage.querySelectorAll('[data-screen]')];
+  const screenSelect = document.getElementById('sh-screen');
+  const stateSelect = document.getElementById('sh-state');
+  const vpBtn = document.getElementById('sh-vp');
+  const themeCtl = document.getElementById('sh-theme');
+  const themeBtns = [...themeCtl.querySelectorAll('button')];
+  let current = null;
+  let currentStates = [];
+
+  screens.forEach(s => {
+    const option = document.createElement('option');
+    option.textContent = s.dataset.title || s.dataset.screen;
+    option.value = s.dataset.screen;
+    screenSelect.append(option);
+  });
+  screenSelect.onchange = () => show(screenSelect.value);
+
+  function show(slug) {
+    current = screens.find(s => s.dataset.screen === slug) || screens[0];
+    screens.forEach(s => s.hidden = s !== current);
+    screenSelect.value = current.dataset.screen;
+    history.replaceState(null, '', '#' + current.dataset.screen);
+    buildStates();
+  }
+
+  function buildStates() {
+    const declared = (current.dataset.states || '').split(',').map(x => x.trim()).filter(Boolean);
+    currentStates = ['Default', ...declared.filter(name => name !== 'Default')];
+    stateSelect.innerHTML = '';
+    currentStates.forEach(name => {
+      const option = document.createElement('option');
+      option.textContent = name;
+      option.value = name;
+      stateSelect.append(option);
+    });
+    applyState('Default');
+  }
+
+  function applyState(name) {
+    const active = currentStates.includes(name) ? name : 'Default';
+    current.querySelectorAll('[data-when]').forEach(el => {
+      el.hidden = !el.dataset.when.split(',').map(x => x.trim()).includes(active);
+    });
+    stateSelect.value = active;
+    syncProductToState(active);
+  }
+  stateSelect.onchange = () => applyState(stateSelect.value);
+
+  window.prototypeShell = {
+    showScreen: show,
+    setState: applyState,
+    getScreen: () => current?.dataset.screen,
+    getState: () => stateSelect.value
+  };
+
+  const VPS = ['full', '390', '768'];
+  let vp = VPS.find(v => document.body.classList.contains('sh-vp-' + v)) || 'full';
+  function applyVp() {
+    VPS.forEach(v => document.body.classList.toggle('sh-vp-' + v, v === vp && v !== 'full'));
+    vpBtn.textContent = 'vp: ' + vp + ' (m)';
+    vpBtn.classList.toggle('on', vp !== 'full');
+  }
+  vpBtn.onclick = () => { vp = VPS[(VPS.indexOf(vp) + 1) % VPS.length]; applyVp(); };
+  applyVp();
+
+  const hasDark = [...document.styleSheets].some(sheet => {
+    try {
+      return [...sheet.cssRules].some(rule => (rule.selectorText || '')
+        .split(',').some(part => /\.sh-theme-dark$/.test(part.trim())));
+    } catch { return false }
+  });
+  let dark = false;
+  function applyTheme() {
+    document.documentElement.classList.toggle('sh-theme-dark', dark);
+    document.body.classList.toggle('sh-theme-dark', dark);
+    themeBtns.forEach(b => b.classList.toggle('on', (b.dataset.theme === 'dark') === dark));
+  }
+  themeCtl.hidden = !hasDark;
+  themeBtns.forEach(b => b.onclick = () => { dark = b.dataset.theme === 'dark'; applyTheme(); });
+  applyTheme();
+
+  addEventListener('keydown', e => {
+    if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+    const i = screens.indexOf(current);
+    if (e.key === 'ArrowRight') show(screens[(i + 1) % screens.length].dataset.screen);
+    if (e.key === 'ArrowLeft') show(screens[(i - 1 + screens.length) % screens.length].dataset.screen);
+    if (e.key === 'm') vpBtn.click();
+    if (e.key === 't' && !themeCtl.hidden) { dark = !dark; applyTheme(); }
+  });
+
+  addEventListener('hashchange', () => show(location.hash.slice(1)));
+
+  /* ── product interactions (dummy: KE17 and OZ201 exist, today = 2026-10-29) ── */
+  const TODAY = '2026-10-29', FORECAST_LAST = '2026-11-14';
+  const flightInput = document.getElementById('flight');
+  const dateInput = document.getElementById('date');
+  const dateErr = document.getElementById('date-err');
+  const flightErr = document.getElementById('flight-err');
+  let timer = null;
+
+  function syncProductToState(name) {
+    const bad = name === '입력 오류';
+    if (!bad) dateErr.hidden = true;
+    flightInput.setAttribute('aria-invalid', bad && !/^[A-Z0-9]{2}\s?\d{1,4}$/.test(flightInput.value.trim().toUpperCase()));
+    dateInput.setAttribute('aria-invalid', bad && (!dateInput.value || dateInput.value < TODAY));
+  }
+
+  function flow(state) { clearTimeout(timer); prototypeShell.setState(state); }
+
+  document.getElementById('lookup-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const flight = flightInput.value.trim().toUpperCase();
+    const date = dateInput.value;
+    const flightOk = /^[A-Z0-9]{2}\s?\d{1,4}$/.test(flight);
+    const dateOk = !!date && date >= TODAY;
+    if (!flightOk || !dateOk) {
+      dateErr.textContent = !date ? '날짜를 입력해 주세요.' : '이미 지난 날짜는 조회할 수 없어요.';
+      flow('입력 오류');
+      flightErr.hidden = flightOk;
+      dateErr.hidden = dateOk;
+      return;
+    }
+    flow('조회 중');
+    timer = setTimeout(() => {
+      const known = ['KE17', 'KE 17', 'OZ201', 'OZ 201'].includes(flight);
+      if (!known) return flow('편명 없음');
+      flow(date > FORECAST_LAST ? '예보 없음' : 'Default');
+    }, 900);
+  });
+  document.getElementById('retry').onclick = () => document.getElementById('lookup-form').requestSubmit();
+  document.getElementById('retry-wx').onclick = () => { flow('조회 중'); timer = setTimeout(() => flow('Default'), 700); };
+
+  show(location.hash.slice(1));
+</script>

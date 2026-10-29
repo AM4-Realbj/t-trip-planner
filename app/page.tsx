@@ -1,67 +1,65 @@
-import Image from "next/image";
-import { ArrowUpRightIcon, TriangleIcon } from "lucide-react";
+import { Suspense } from "react";
+import { LuggageIcon } from "lucide-react";
 
-import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { validateLookupInput } from "@/features/flight-outfit";
+import {
+  FlightResult,
+  ResultSkeleton,
+} from "@/features/flight-outfit/components/flight-result";
+import { LookupForm } from "@/features/flight-outfit/components/lookup-form";
 
-export default function Home() {
+function all(value: string | string[] | undefined) {
+  return value === undefined ? undefined : Array.isArray(value) ? value : [value];
+}
+
+export default async function Home({ searchParams }: PageProps<"/">) {
+  const params = await searchParams;
+  const flights = all(params.flight);
+  const date = Array.isArray(params.date) ? params.date[0] : params.date;
+  const submitted = flights !== undefined || date !== undefined;
+  const input = { flights: flights ?? [""], date: date ?? "" };
+  const errors = submitted ? validateLookupInput(input, new Date()) : {};
+  const valid = submitted && Object.keys(errors).length === 0;
+
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-6 py-24">
-      <div className="flex w-full max-w-xl flex-col gap-10">
-        <Image
-          className="h-5 w-[100px] dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col gap-4">
-          <h1 className="font-heading text-3xl font-semibold tracking-tight text-balance">
-            To get started, edit the{" "}
-            <code className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[0.9em]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="text-lg text-muted-foreground">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-foreground underline underline-offset-4"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-foreground underline underline-offset-4"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <a
-            className={buttonVariants({ size: "lg" })}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <TriangleIcon data-icon="inline-start" />
-            Deploy Now
-          </a>
-          <a
-            className={buttonVariants({ size: "lg", variant: "outline" })}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-            <ArrowUpRightIcon data-icon="inline-end" />
-          </a>
-        </div>
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-4 py-8 sm:py-12">
+      <div className="flex flex-col gap-1">
+        <h1 className="font-heading text-2xl font-semibold tracking-tight">
+          공항 날씨와 옷차림
+        </h1>
+        <p className="text-muted-foreground">
+          출발 날짜와 편명을 넣으면 출발·환승·도착 공항의 날씨와 입을 옷을 알려드려요.
+        </p>
       </div>
+
+      <LookupForm
+        defaultFlights={input.flights}
+        defaultDate={date}
+        collapsed={valid}
+        errors={errors}
+      />
+
+      {!submitted ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-1.5 py-6 text-center">
+            <LuggageIcon aria-hidden="true" className="size-8" />
+            <strong className="font-semibold">아직 조회한 편명이 없어요</strong>
+            <p className="text-sm text-muted-foreground">
+              날짜와 편명을 입력하면 공항별 예보와 추천 옷이 이곳에 나타나요.
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {valid ? (
+        <Suspense
+          key={`${date}|${input.flights.join(",")}`}
+          fallback={<ResultSkeleton />}
+        >
+          <FlightResult flights={input.flights} date={input.date} />
+        </Suspense>
+      ) : null}
     </main>
   );
 }
