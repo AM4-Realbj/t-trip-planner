@@ -95,14 +95,6 @@ export async function FlightResult({ flight, date }: Props) {
         />
       </div>
 
-      {result.comparison ? (
-        <WeatherDifference
-          from={departure.iata}
-          to={arrival.iata}
-          comparison={result.comparison}
-        />
-      ) : null}
-
       {result.tip ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col gap-1.5">
@@ -112,6 +104,27 @@ export async function FlightResult({ flight, date }: Props) {
             <p className="text-sm break-keep">{result.tip}</p>
           </CardContent>
         </Card>
+      ) : null}
+
+      {result.comparison ? (
+        <details className="group flex flex-col gap-4">
+          <summary
+            className={buttonVariants({
+              variant: "outline",
+              className: "w-full cursor-pointer list-none [&::-webkit-details-marker]:hidden",
+            })}
+          >
+            <span className="group-open:hidden">차이비교</span>
+            <span className="hidden group-open:inline">차이비교 닫기</span>
+          </summary>
+          <div className="pt-4">
+            <WeatherDifference
+              from={departure.iata}
+              to={arrival.iata}
+              comparison={result.comparison}
+            />
+          </div>
+        </details>
       ) : null}
 
       <p className="text-center text-xs text-muted-foreground">

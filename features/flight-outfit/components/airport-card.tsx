@@ -119,33 +119,27 @@ function ForecastBody({
 function OutfitList({ outfit }: { outfit: Outfit }) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-xs font-semibold text-muted-foreground">추천 옷</span>
-      <ul className="flex flex-col gap-2">
-        <li className="flex items-center gap-2.5 rounded-lg border px-2.5 py-2 text-sm">
-          <span className="w-9 shrink-0 text-xs font-semibold text-muted-foreground">
-            겉옷
-          </span>
-          <OuterIcon icon={outfit.outerIcon} className="size-5 shrink-0" />
+      <span className="text-sm font-semibold text-muted-foreground">추천 옷</span>
+      <ul className="flex flex-col gap-3">
+        <li className="flex items-center gap-3 text-base">
+          <OuterIcon icon={outfit.outerIcon} className="size-7 shrink-0" />
           <span>{outfit.outer}</span>
         </li>
-        <li className="flex items-center gap-2.5 rounded-lg border px-2.5 py-2 text-sm">
-          <span className="w-9 shrink-0 text-xs font-semibold text-muted-foreground">
-            기본
-          </span>
-          <BaseIcon className="size-5 shrink-0" />
+        <li className="flex items-center gap-3 text-base">
+          <BaseIcon className="size-7 shrink-0" />
           <span>{outfit.base}</span>
         </li>
       </ul>
       <div className="flex flex-wrap gap-1.5">
         {outfit.carry.length > 0 ? (
           outfit.carry.map((item) => (
-            <Badge key={item} variant="secondary">
+            <Badge key={item} variant="secondary" className="h-7 px-3 text-sm [&>svg]:size-4!">
               <CarryIcon item={item} />
               {item}
             </Badge>
           ))
         ) : (
-          <Badge variant="secondary">지참 물품 없음</Badge>
+          <Badge variant="secondary" className="h-7 px-3 text-sm">지참 물품 없음</Badge>
         )}
       </div>
     </div>

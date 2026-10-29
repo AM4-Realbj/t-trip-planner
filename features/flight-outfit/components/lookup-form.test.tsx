@@ -11,7 +11,7 @@ describe("조회 입력 폼", () => {
     expect(inputs).toEqual(["date", "flight"]);
     const form = container.querySelector("form")!;
     expect(form).toHaveAttribute("method", "get");
-    expect(screen.getByRole("button", { name: "날씨와 옷 보기" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "조회하기" })).toBeInTheDocument();
   });
 
   it("이전 조회 조건을 칸에 채워 둔다", () => {
@@ -34,5 +34,23 @@ describe("조회 입력 폼", () => {
       "편명 형식이 맞지 않아요. 항공사 코드 2자와 숫자로 입력해 주세요.",
     );
     expect(screen.getByLabelText("출발 날짜")).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("결과가 나온 뒤에는 입력 칸을 접고 조회 조건 요약과 '다시 조회' 버튼만 먼저 보여 준다", () => {
+    const { container } = render(
+      <LookupForm collapsed defaultFlight="KE17" defaultDate="2026-10-31" />,
+    );
+
+    const details = container.querySelector("details")!;
+    expect(details).not.toHaveAttribute("open");
+    expect(screen.getByText("10월 31일 (토) · KE17")).toBeInTheDocument();
+    expect(screen.getByText("다시 조회")).toBeInTheDocument();
+    expect(details.querySelector("form")).not.toBeNull();
+  });
+
+  it("접지 않은 상태에서는 details 없이 입력 칸을 바로 보여 준다", () => {
+    const { container } = render(<LookupForm />);
+
+    expect(container.querySelector("details")).toBeNull();
   });
 });

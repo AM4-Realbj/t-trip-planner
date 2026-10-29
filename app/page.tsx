@@ -36,6 +36,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       <LookupForm
         defaultFlight={flight}
         defaultDate={date}
+        collapsed={valid}
         errors={errors}
       />
 
