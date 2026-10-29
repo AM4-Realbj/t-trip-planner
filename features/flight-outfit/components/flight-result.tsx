@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 import { lookupFlight } from "../index";
 import { AirportCard } from "./airport-card";
+import { ItinerarySummary } from "./itinerary-summary";
 import { WeatherDifference } from "./weather-difference";
 
 type Props = { flights: string[]; date: string };
@@ -132,6 +133,8 @@ export async function FlightResult({ flights, date }: Props) {
           ))}
         </div>
       </div>
+
+      {stacked ? <ItinerarySummary stops={stops} /> : null}
 
       <div className={stacked ? "flex flex-col" : "grid gap-4 sm:grid-cols-2"}>
         {stops.map((stop, i) => (
